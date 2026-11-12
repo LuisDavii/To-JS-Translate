@@ -106,7 +106,7 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
     /* Ignora espacos entre tokens */
 }
 
-/* Palavras reservadas */
+
 
 "if"       { return IF; }
 "else"     { return ELSE; }
@@ -121,7 +121,7 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 "or"       { return OR; }
 "not"      { return NOT; }
 
-/* Operadores relacionais */
+
 
 "=="       { return EQ; }
 "!="       { return NE; }
@@ -131,7 +131,7 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 "<"        { return LT; }
 "="        { return ASSIGN; }
 
-/* Operadores aritmeticos */
+
 
 "+"        { return PLUS; }
 "-"        { return MINUS; }
@@ -139,7 +139,7 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 "/"        { return SLASH; }
 "%"        { return MOD; }
 
-/* Delimitadores */
+
 
 "("        { return LPAREN; }
 ")"        { return RPAREN; }
@@ -147,7 +147,7 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 ","        { return COMMA; }
 ";"        { return FIM_COMANDO; }
 
-/* Constantes */
+
 
 {REALNUM} {
     yylval.text = copy_text(yytext);
@@ -164,14 +164,14 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
     return STRING;
 }
 
-/* Identificadores */
+
 
 {ID_START}{ID_CONT}* {
     yylval.text = copy_text(yytext);
     return IDENT;
 }
 
-/* Erros lexicos */
+
 
 . {
     fprintf(stderr,

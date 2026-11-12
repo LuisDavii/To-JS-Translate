@@ -138,15 +138,15 @@ saida:
 
 /* Estrutura condicional */
 
-condicional:
-      IF expressao COLON NEWLINE
+condicional
+    : IF expressao COLON NEWLINE
       INDENT comandos DEDENT
       {
           $$ = node_new(N_IF);
           $$->left = $2;
           $$->body = $6;
+          $$->else_body = NULL;
       }
-
     | IF expressao COLON NEWLINE
       INDENT comandos DEDENT
       ELSE COLON NEWLINE
@@ -155,7 +155,7 @@ condicional:
           $$ = node_new(N_IF);
           $$->left = $2;
           $$->body = $6;
-          $$->else_body = $11;
+          $$->else_body = $12;
       }
     ;
 
