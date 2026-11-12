@@ -1,0 +1,14 @@
+
+idade = 20;
+nome = "Sabrina";
+
+if idade >= 18:
+    print("Maior de idade");
+else:
+    print("Menor de idade");
+
+contador = 1;
+
+while contador <= 3:
+    print(contador);
+    contador = contador + 1;
