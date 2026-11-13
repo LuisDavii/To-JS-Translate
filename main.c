@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,83 +31,6 @@ static char *duplicate(const char *text) {
 
     strcpy(copy, text);
     return copy;
-}
-
-/* Criacao dos nos da AST */
-
-Node *node_new(NodeType type) {
-    Node *node = calloc(1, sizeof(Node));
-
-    if (!node) {
-        fprintf(stderr, "Erro: memoria insuficiente\n");
-        exit(1);
-    }
-
-    node->type = type;
-
-    return node;
-}
-
-Node *node_text(NodeType type, const char *text) {
-    Node *node = node_new(type);
-
-    node->text = duplicate(text ? text : "");
-
-    return node;
-}
-
-Node *node_binary(const char *op, Node *left, Node *right) {
-    Node *node = node_text(N_BINARY, op);
-
-    node->left = left;
-    node->right = right;
-
-    return node;
-}
-
-Node *node_unary(const char *op, Node *operand) {
-    Node *node = node_text(N_UNARY, op);
-
-    node->left = operand;
-
-    return node;
-}
-
-/* Adiciona um comando a lista da AST */
-
-Node *node_append(Node *list, Node *item) {
-    if (!item)
-        return list;
-
-    if (!list)
-        return item;
-
-    Node *current = list;
-
-    while (current->next)
-        current = current->next;
-
-    current->next = item;
-
-    return list;
-}
-
-/* Libera a memoria da AST */
-
-void ast_free(Node *node) {
-    while (node) {
-        Node *next = node->next;
-
-        ast_free(node->left);
-        ast_free(node->right);
-        ast_free(node->body);
-        ast_free(node->else_body);
-
-        free(node->text);
-        free(node);
-
-        node = next;
-    }
 }
 
 /* Busca uma variavel na tabela de simbolos */
@@ -167,8 +89,8 @@ static void semantic_expr(Node *node) {
     if (node->type == N_ID) {
         if (!find_symbol(node->text)) {
             fprintf(stderr,
-                    "Erro semantico: variavel '%s' utilizada antes de receber valor.\n",
-                    node->text);
+                    "Erro semantico na linha %d: variavel '%s' utilizada antes de receber valor.\n",
+                    node->line, node->text);
 
             errors++;
         }
@@ -184,6 +106,10 @@ static void semantic_list(Node *node) {
     while (node) {
 
         switch (node->type) {
+
+            case N_LIST:
+                semantic_list(node->body);
+                break;
 
             case N_ASSIGN:
                 semantic_expr(node->left);
@@ -275,6 +201,11 @@ static void emit_expr(FILE *out, Node *node) {
 static void emit_list(FILE *out, Node *node) {
 
     for (; node; node = node->next) {
+
+        if (node->type == N_LIST) {
+            emit_list(out, node->body);
+            continue;
+        }
 
         indent(out);
 
@@ -376,10 +307,11 @@ static void emit_list(FILE *out, Node *node) {
 /* Compilacao do programa */
 
 void compile_program(Node *root, const char *output_path) {
+    Node *statements = (root && root->type == N_LIST) ? root->body : root;
 
     errors = 0;
 
-    semantic_list(root);
+    semantic_list(statements);
 
     if (errors > 0) {
         fprintf(stderr,
@@ -396,26 +328,59 @@ void compile_program(Node *root, const char *output_path) {
         return;
     }
 
-    emit_list(out, root);
+    emit_list(out, statements);
 
     fclose(out);
 
     printf("Traducao concluida: %s\n", output_path);
 }
 
+static void print_usage(const char *prog) {
+    fprintf(stderr,
+            "Uso: %s [--ast | --ast-only] arquivo.tojs [saida.js]\n",
+            prog);
+}
+
 /* Funcao principal */
 
 int main(int argc, char **argv) {
+    int show_ast = 0;
+    int ast_only = 0;
+    const char *input_path = NULL;
+    const char *output_path = "saida.js";
+    int pos = 0;
 
-    if (argc < 2 || argc > 3) {
-        fprintf(stderr,
-                "Uso: %s arquivo.tojs [saida.js]\n",
-                argv[0]);
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--ast") == 0) {
+            show_ast = 1;
+        } else if (strcmp(argv[i], "--ast-only") == 0) {
+            show_ast = 1;
+            ast_only = 1;
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            print_usage(argv[0]);
+            return 0;
+        } else if (argv[i][0] == '-') {
+            fprintf(stderr, "Opcao desconhecida: %s\n", argv[i]);
+            print_usage(argv[0]);
+            return 1;
+        } else if (pos == 0) {
+            input_path = argv[i];
+            pos++;
+        } else if (pos == 1) {
+            output_path = argv[i];
+            pos++;
+        } else {
+            print_usage(argv[0]);
+            return 1;
+        }
+    }
 
+    if (!input_path) {
+        print_usage(argv[0]);
         return 1;
     }
 
-    yyin = fopen(argv[1], "r");
+    yyin = fopen(input_path, "r");
 
     if (!yyin) {
         perror("Erro ao abrir arquivo de entrada");
@@ -427,10 +392,13 @@ int main(int argc, char **argv) {
     fclose(yyin);
 
     if (result == 0) {
-        compile_program(
-            program_root,
-            argc == 3 ? argv[2] : "saida.js"
-        );
+        if (show_ast) {
+            ast_print(program_root, stdout);
+        }
+
+        if (!ast_only) {
+            compile_program(program_root, output_path);
+        }
     }
 
     ast_free(program_root);

@@ -1,4 +1,3 @@
-
 %{
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,10 +13,16 @@ Node *program_root = NULL;
 #include "ast.h"
 }
 
+%locations
+%define parse.error verbose
+
 %union {
     char *text;
     Node *node;
 }
+
+%destructor { free($$); } <text>
+%destructor { ast_free($$); } <node>
 
 %token <text> IDENT STRING
 %token <text> INTEGER REAL
@@ -57,8 +62,8 @@ Node *program_root = NULL;
 programa:
     comandos
     {
-        program_root = $1;
-        $$ = $1;
+        program_root = node_list($1, @1.first_line);
+        $$ = NULL;
     }
     ;
 
@@ -120,9 +125,9 @@ comando_composto:
 atribuicao:
     IDENT ASSIGN expressao
     {
-        $$ = node_new(N_ASSIGN);
-        $$->text = $1;
+        $$ = node_text(N_ASSIGN, $1, @1.first_line);
         $$->left = $3;
+        free($1);
     }
     ;
 
@@ -131,28 +136,29 @@ atribuicao:
 saida:
     PRINT LPAREN expressao RPAREN
     {
-        $$ = node_new(N_PRINT);
+        $$ = node_new(N_PRINT, @1.first_line);
         $$->left = $3;
     }
     ;
 
 /* Estrutura condicional */
 
-condicional
-    : IF expressao COLON NEWLINE
+condicional:
+      IF expressao COLON NEWLINE
       INDENT comandos DEDENT
       {
-          $$ = node_new(N_IF);
+          $$ = node_new(N_IF, @1.first_line);
           $$->left = $2;
           $$->body = $6;
           $$->else_body = NULL;
       }
+
     | IF expressao COLON NEWLINE
       INDENT comandos DEDENT
       ELSE COLON NEWLINE
       INDENT comandos DEDENT
       {
-          $$ = node_new(N_IF);
+          $$ = node_new(N_IF, @1.first_line);
           $$->left = $2;
           $$->body = $6;
           $$->else_body = $12;
@@ -165,7 +171,7 @@ repeticao:
     WHILE expressao COLON NEWLINE
     INDENT comandos DEDENT
     {
-        $$ = node_new(N_WHILE);
+        $$ = node_new(N_WHILE, @1.first_line);
         $$->left = $2;
         $$->body = $6;
     }
@@ -183,7 +189,7 @@ expressao:
 expressao_or:
       expressao_or OR expressao_and
       {
-          $$ = node_binary("or", $1, $3);
+          $$ = node_binary("or", $1, $3, @2.first_line);
       }
 
     | expressao_and
@@ -195,7 +201,7 @@ expressao_or:
 expressao_and:
       expressao_and AND expressao_not
       {
-          $$ = node_binary("and", $1, $3);
+          $$ = node_binary("and", $1, $3, @2.first_line);
       }
 
     | expressao_not
@@ -207,7 +213,7 @@ expressao_and:
 expressao_not:
       NOT expressao_not
       {
-          $$ = node_unary("not", $2);
+          $$ = node_unary("not", $2, @1.first_line);
       }
 
     | comparacao
@@ -224,32 +230,32 @@ comparacao:
 
     | expressao_aritmetica EQ expressao_aritmetica
       {
-          $$ = node_binary("==", $1, $3);
+          $$ = node_binary("==", $1, $3, @2.first_line);
       }
 
     | expressao_aritmetica NE expressao_aritmetica
       {
-          $$ = node_binary("!=", $1, $3);
+          $$ = node_binary("!=", $1, $3, @2.first_line);
       }
 
     | expressao_aritmetica GT expressao_aritmetica
       {
-          $$ = node_binary(">", $1, $3);
+          $$ = node_binary(">", $1, $3, @2.first_line);
       }
 
     | expressao_aritmetica LT expressao_aritmetica
       {
-          $$ = node_binary("<", $1, $3);
+          $$ = node_binary("<", $1, $3, @2.first_line);
       }
 
     | expressao_aritmetica GE expressao_aritmetica
       {
-          $$ = node_binary(">=", $1, $3);
+          $$ = node_binary(">=", $1, $3, @2.first_line);
       }
 
     | expressao_aritmetica LE expressao_aritmetica
       {
-          $$ = node_binary("<=", $1, $3);
+          $$ = node_binary("<=", $1, $3, @2.first_line);
       }
     ;
 
@@ -258,12 +264,12 @@ comparacao:
 expressao_aritmetica:
       expressao_aritmetica PLUS termo
       {
-          $$ = node_binary("+", $1, $3);
+          $$ = node_binary("+", $1, $3, @2.first_line);
       }
 
     | expressao_aritmetica MINUS termo
       {
-          $$ = node_binary("-", $1, $3);
+          $$ = node_binary("-", $1, $3, @2.first_line);
       }
 
     | termo
@@ -275,17 +281,17 @@ expressao_aritmetica:
 termo:
       termo STAR fator
       {
-          $$ = node_binary("*", $1, $3);
+          $$ = node_binary("*", $1, $3, @2.first_line);
       }
 
     | termo SLASH fator
       {
-          $$ = node_binary("/", $1, $3);
+          $$ = node_binary("/", $1, $3, @2.first_line);
       }
 
     | termo MOD fator
       {
-          $$ = node_binary("%", $1, $3);
+          $$ = node_binary("%", $1, $3, @2.first_line);
       }
 
     | fator
@@ -297,12 +303,12 @@ termo:
 fator:
       PLUS fator %prec UPLUS
       {
-          $$ = node_unary("+", $2);
+          $$ = node_unary("+", $2, @1.first_line);
       }
 
     | MINUS fator %prec UMINUS
       {
-          $$ = node_unary("-", $2);
+          $$ = node_unary("-", $2, @1.first_line);
       }
 
     | primario
@@ -316,37 +322,41 @@ fator:
 primario:
       IDENT
       {
-          $$ = node_text(N_ID, $1);
+          $$ = node_text(N_ID, $1, @1.first_line);
+          free($1);
       }
 
     | INTEGER
       {
-          $$ = node_text(N_INT, $1);
+          $$ = node_number(N_INT, 0.0, $1, @1.first_line);
+          free($1);
       }
 
     | REAL
       {
-          $$ = node_text(N_REAL, $1);
+          $$ = node_number(N_REAL, 0.0, $1, @1.first_line);
+          free($1);
       }
 
     | STRING
       {
-          $$ = node_text(N_STRING, $1);
+          $$ = node_text(N_STRING, $1, @1.first_line);
+          free($1);
       }
 
     | TRUE
       {
-          $$ = node_text(N_BOOL, "true");
+          $$ = node_bool(1, @1.first_line);
       }
 
     | FALSE
       {
-          $$ = node_text(N_BOOL, "false");
+          $$ = node_bool(0, @1.first_line);
       }
 
     | NONE
       {
-          $$ = node_text(N_NONE, "null");
+          $$ = node_text(N_NONE, "null", @1.first_line);
       }
 
     | LPAREN expressao RPAREN
@@ -358,7 +368,6 @@ primario:
 %%
 
 void yyerror(const char *message) {
-    fprintf(stderr,
-            "Erro sintatico na linha %d: %s\n",
-            yylineno, message);
+    int line = yylloc.first_line > 0 ? yylloc.first_line : yylineno;
+    fprintf(stderr, "Erro sintatico na linha %d: %s\n", line, message);
 }

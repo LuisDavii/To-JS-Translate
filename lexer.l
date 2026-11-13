@@ -14,7 +14,10 @@ static int line_has_token = 0;
 static int eof_newline_sent = 0;
 
 #define YY_DECL static int lexer_next(void)
-#define YY_USER_INIT BEGIN(BOL)
+#define YY_USER_INIT BEGIN(BOL);
+#define YY_USER_ACTION \
+    yylloc.first_line = yylloc.last_line = yylineno; \
+    yylloc.first_column = yylloc.last_column = 1;
 
 static char *copy_text(const char *s) {
     size_t n = strlen(s) + 1;
@@ -42,13 +45,16 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 
 %%
 
-<BOL>[ \t]+#[^\n]* {
+<BOL>[ \t]+#[^\r\n]* {
 }
 
-<BOL>#[^\n]* {
+<BOL>#[^\r\n]* {
 }
 
-<BOL>\n {
+<BOL>[ \t]+\r?\n {
+}
+
+<BOL>\r?\n {
 }
 
 <BOL>[ \t]+ {
@@ -95,7 +101,7 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
     BEGIN(INITIAL);
 }
 
-<BOL>[^ \t\n#] {
+<BOL>[^ \t\r\n#] {
     if (indent_top > 0) {
         int count = indent_top;
         indent_top = 0;
@@ -111,10 +117,11 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
     yyless(0);
 }
 
-<INITIAL>#[^\n]* {
+<INITIAL>#[^\r\n]* {
 }
 
-<INITIAL>\n {
+<INITIAL>\r?\n {
+    yylloc.first_line = yylloc.last_line = (yylineno > 1) ? yylineno - 1 : 1;
     BEGIN(BOL);
     return NEWLINE;
 }
@@ -183,6 +190,8 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 }
 
 <INITIAL,BOL><<EOF>> {
+    yylloc.first_line = yylloc.last_line = yylineno;
+
     if (line_has_token && !eof_newline_sent) {
         line_has_token = 0;
         eof_newline_sent = 1;
@@ -205,6 +214,8 @@ int yylex(void) {
 
     if (pending_dedents > 0) {
         pending_dedents--;
+        yylloc.first_line = yylloc.last_line = yylineno;
+        yylloc.first_column = yylloc.last_column = 1;
         return DEDENT;
     }
 
