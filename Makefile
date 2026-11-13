@@ -9,8 +9,8 @@ parser.tab.c parser.tab.h: parser.y ast.h
 lex.yy.c: lexer.l parser.tab.h
 	flex -o lex.yy.c lexer.l
 
-tojs: parser.tab.c lex.yy.c ast.c main.c ast.h
-	$(CC) $(CFLAGS) -o tojs parser.tab.c lex.yy.c ast.c main.c
+tojs: parser.tab.c lex.yy.c ast.c semantic.c codegen.c main.c ast.h semantic.h codegen.h
+	$(CC) $(CFLAGS) -o tojs parser.tab.c lex.yy.c ast.c semantic.c codegen.c main.c
 
 clean:
 	rm -f tojs tojs.exe parser.tab.c parser.tab.h lex.yy.c saida.js

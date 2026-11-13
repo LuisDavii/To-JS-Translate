@@ -47,7 +47,6 @@ int ast_count_nodes(const Node *node);
 void ast_print(const Node *node, FILE *out);
 void ast_free(Node *node);
 
-void compile_program(Node *root, const char *output_path);
 void yyerror(const char *message);
 
 extern int yylineno;
