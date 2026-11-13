@@ -1,0 +1,2 @@
+# ESPERA: exige operando logico
+print(not 3);

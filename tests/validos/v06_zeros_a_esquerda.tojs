@@ -1,0 +1,3 @@
+x = 007;
+print(x);
+# SAIDA: 7

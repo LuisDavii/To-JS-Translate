@@ -1,0 +1,2 @@
+# ESPERA: utilizada antes de receber valor
+print(y);

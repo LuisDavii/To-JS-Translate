@@ -1,0 +1,2 @@
+# ESPERA: exige operando numerico
+print(-"a");

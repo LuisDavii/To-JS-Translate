@@ -1,0 +1,2 @@
+# ESPERA: tipos incompativeis
+print(1 == "a");

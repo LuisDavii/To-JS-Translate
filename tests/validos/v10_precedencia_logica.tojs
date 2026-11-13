@@ -1,0 +1,7 @@
+# and tem precedencia sobre or: True or (False and False) -> true
+print(True or False and False);
+print((True or False) and False);
+print(not True or True);
+# SAIDA: true
+# SAIDA: false
+# SAIDA: true

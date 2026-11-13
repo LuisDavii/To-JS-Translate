@@ -1,0 +1,7 @@
+# variavel definida dentro do if e usada depois (escopo unico, como em Python)
+if True:
+    y = 42;
+else:
+    y = 0;
+print(y);
+# SAIDA: 42

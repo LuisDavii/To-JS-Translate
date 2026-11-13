@@ -1,0 +1,9 @@
+# Decisao de projeto: escopo unico (como Python). Uma variavel atribuida em
+# apenas um dos ramos continua "definida" depois do if.
+# O codegen declara `let z;` no topo do JS para manter isso valido.
+if True:
+    z = 1;
+else:
+    w = 2;
+print(z);
+# SAIDA: 1

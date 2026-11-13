@@ -1,0 +1,2 @@
+# ESPERA: exige operandos numericos
+x = "a" - 1;

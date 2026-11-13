@@ -1,0 +1,7 @@
+# comentario no inicio
+
+x = 1;   # comentario no fim da linha
+
+
+print(x);
+# SAIDA: 1

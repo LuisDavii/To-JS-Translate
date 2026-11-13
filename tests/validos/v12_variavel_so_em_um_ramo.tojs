@@ -1,0 +1,6 @@
+# Mesma decisao de projeto, agora com if sem else.
+x = 1;
+if x > 0:
+    k = 5;
+print(k);
+# SAIDA: 5

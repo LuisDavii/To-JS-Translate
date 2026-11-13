@@ -1,0 +1,16 @@
+# if / else com comparacoes
+nota = 7;
+
+if nota >= 7:
+    print("Aprovado");
+else:
+    print("Reprovado");
+
+if nota == 10:
+    print("Nota maxima");
+
+if nota != 5:
+    print("Diferente de 5");
+
+# SAIDA: Aprovado
+# SAIDA: Diferente de 5

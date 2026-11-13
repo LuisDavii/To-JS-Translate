@@ -1,0 +1,3 @@
+# ESPERA: Erro sintatico
+x = 1;
+print x;

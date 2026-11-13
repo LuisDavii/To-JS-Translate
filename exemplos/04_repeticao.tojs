@@ -1,0 +1,21 @@
+# while: soma de 1 a 10 e fatorial de 5
+i = 1;
+soma = 0;
+
+while i <= 10:
+    soma = soma + i;
+    i = i + 1;
+
+print(soma);
+
+n = 5;
+fat = 1;
+
+while n > 1:
+    fat = fat * n;
+    n = n - 1;
+
+print(fat);
+
+# SAIDA: 55
+# SAIDA: 120

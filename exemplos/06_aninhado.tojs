@@ -1,0 +1,16 @@
+# Estruturas aninhadas: pares e impares de 1 a 6
+i = 1;
+
+while i <= 6:
+    if i % 2 == 0:
+        print("par");
+    else:
+        print("impar");
+    i = i + 1;
+
+# SAIDA: impar
+# SAIDA: par
+# SAIDA: impar
+# SAIDA: par
+# SAIDA: impar
+# SAIDA: par

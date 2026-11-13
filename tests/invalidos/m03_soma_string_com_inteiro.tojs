@@ -1,0 +1,2 @@
+# ESPERA: operador '+' exige
+print("a" + 1);

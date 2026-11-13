@@ -1,0 +1,3 @@
+# ESPERA: deve resultar em valor logico
+while "a":
+    print(1);

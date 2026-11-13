@@ -1,0 +1,18 @@
+# Atribuicoes e saida
+nome = "Sabrina";
+idade = 20;
+altura = 1.65;
+ativo = True;
+nada = None;
+
+print(nome);
+print(idade);
+print(altura);
+print(ativo);
+print(nada);
+
+# SAIDA: Sabrina
+# SAIDA: 20
+# SAIDA: 1.65
+# SAIDA: true
+# SAIDA: null

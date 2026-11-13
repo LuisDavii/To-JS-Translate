@@ -1,0 +1,10 @@
+# Strings: aspas duplas, simples e concatenacao
+nome = "Ana";
+saudacao = 'Ola, ' + nome;
+print(saudacao);
+print("a" < "b");
+print(nome == "Ana");
+
+# SAIDA: Ola, Ana
+# SAIDA: true
+# SAIDA: true

@@ -1,0 +1,6 @@
+# 'var', 'new' e 'class' sao validos em PtoJS mas reservados em JS
+var = 1;
+new = 2;
+class = 3;
+print(var + new + class);
+# SAIDA: 6

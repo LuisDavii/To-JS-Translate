@@ -1,0 +1,23 @@
+# Operadores logicos: and, or, not
+idade = 25;
+tem_ingresso = True;
+
+if idade >= 18 and tem_ingresso:
+    print("Pode entrar");
+else:
+    print("Nao pode entrar");
+
+if idade < 18 or not tem_ingresso:
+    print("Barrado");
+else:
+    print("Liberado");
+
+print(not False);
+print(True and False);
+print(True or False);
+
+# SAIDA: Pode entrar
+# SAIDA: Liberado
+# SAIDA: true
+# SAIDA: false
+# SAIDA: true

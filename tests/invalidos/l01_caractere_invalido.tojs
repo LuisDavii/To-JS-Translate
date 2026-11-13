@@ -1,0 +1,2 @@
+# ESPERA: Erro lexico
+x = 5 @ 3;

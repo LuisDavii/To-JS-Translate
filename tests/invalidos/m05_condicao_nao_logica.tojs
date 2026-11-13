@@ -1,0 +1,3 @@
+# ESPERA: deve resultar em valor logico
+if 5:
+    print(1);
