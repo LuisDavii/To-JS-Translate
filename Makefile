@@ -3,6 +3,9 @@ CFLAGS = -Wall -Wextra -g
 
 all: tojs
 
+test: tojs
+	bash run_tests.sh ./tojs
+
 parser.tab.c parser.tab.h: parser.y ast.h
 	bison -d -o parser.tab.c parser.y
 
@@ -11,6 +14,8 @@ lex.yy.c: lexer.l parser.tab.h
 
 tojs: parser.tab.c lex.yy.c ast.c semantic.c codegen.c main.c ast.h semantic.h codegen.h
 	$(CC) $(CFLAGS) -o tojs parser.tab.c lex.yy.c ast.c semantic.c codegen.c main.c
+
+.PHONY: all test clean
 
 clean:
 	rm -f tojs tojs.exe parser.tab.c parser.tab.h lex.yy.c saida.js
