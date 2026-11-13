@@ -1,5 +1,5 @@
 
-%option noyywrap yylineno
+%option noyywrap yylineno noinput nounput
 
 %{
 #include <stdio.h>
@@ -10,8 +10,11 @@
 static int indent_stack[256] = {0};
 static int indent_top = 0;
 static int pending_dedents = 0;
+static int line_has_token = 0;
+static int eof_newline_sent = 0;
 
 #define YY_DECL static int lexer_next(void)
+#define YY_USER_INIT BEGIN(BOL)
 
 static char *copy_text(const char *s) {
     size_t n = strlen(s) + 1;
@@ -39,6 +42,15 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 
 %%
 
+<BOL>[ \t]+#[^\n]* {
+}
+
+<BOL>#[^\n]* {
+}
+
+<BOL>\n {
+}
+
 <BOL>[ \t]+ {
     int col = 0;
 
@@ -48,7 +60,9 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 
     if (col > indent_stack[indent_top]) {
         if (indent_top >= 255) {
-            fprintf(stderr, "Erro: indentacao muito profunda na linha %d\n", yylineno);
+            fprintf(stderr,
+                    "Erro: indentacao muito profunda na linha %d\n",
+                    yylineno);
             exit(1);
         }
 
@@ -60,7 +74,8 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
     if (col < indent_stack[indent_top]) {
         int count = 0;
 
-        while (indent_top > 0 && col < indent_stack[indent_top]) {
+        while (indent_top > 0 &&
+               col < indent_stack[indent_top]) {
             indent_top--;
             count++;
         }
@@ -80,21 +95,23 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
     BEGIN(INITIAL);
 }
 
-<BOL>#[^\n]* {
-    /* Ignora comentarios */
-}
-
-<BOL>\n {
-    /* Ignora linhas vazias */
-}
-
 <BOL>[^ \t\n#] {
+    if (indent_top > 0) {
+        int count = indent_top;
+        indent_top = 0;
+        pending_dedents = count - 1;
+
+        BEGIN(INITIAL);
+        yyless(0);
+
+        return DEDENT;
+    }
+
     BEGIN(INITIAL);
     yyless(0);
 }
 
 <INITIAL>#[^\n]* {
-    /* Ignora comentarios */
 }
 
 <INITIAL>\n {
@@ -102,11 +119,8 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
     return NEWLINE;
 }
 
-[ \t\r]+ {
-    /* Ignora espacos entre tokens */
+<INITIAL>[ \t\r]+ {
 }
-
-
 
 "if"       { return IF; }
 "else"     { return ELSE; }
@@ -121,8 +135,6 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 "or"       { return OR; }
 "not"      { return NOT; }
 
-
-
 "=="       { return EQ; }
 "!="       { return NE; }
 ">="       { return GE; }
@@ -131,23 +143,17 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 "<"        { return LT; }
 "="        { return ASSIGN; }
 
-
-
 "+"        { return PLUS; }
 "-"        { return MINUS; }
 "*"        { return STAR; }
 "/"        { return SLASH; }
 "%"        { return MOD; }
 
-
-
 "("        { return LPAREN; }
 ")"        { return RPAREN; }
 ":"        { return COLON; }
 ","        { return COMMA; }
 ";"        { return FIM_COMANDO; }
-
-
 
 {REALNUM} {
     yylval.text = copy_text(yytext);
@@ -164,14 +170,10 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
     return STRING;
 }
 
-
-
 {ID_START}{ID_CONT}* {
     yylval.text = copy_text(yytext);
     return IDENT;
 }
-
-
 
 . {
     fprintf(stderr,
@@ -181,6 +183,13 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 }
 
 <INITIAL,BOL><<EOF>> {
+    if (line_has_token && !eof_newline_sent) {
+        line_has_token = 0;
+        eof_newline_sent = 1;
+        BEGIN(BOL);
+        return NEWLINE;
+    }
+
     if (indent_top > 0) {
         indent_top--;
         return DEDENT;
@@ -192,10 +201,22 @@ STRING_SQ   \'([^\\\'\n]|\\.)*\'
 %%
 
 int yylex(void) {
+    int token;
+
     if (pending_dedents > 0) {
         pending_dedents--;
         return DEDENT;
     }
 
-    return lexer_next();
+    token = lexer_next();
+
+    if (token == NEWLINE) {
+        line_has_token = 0;
+    } else if (token != 0 &&
+               token != INDENT &&
+               token != DEDENT) {
+        line_has_token = 1;
+    }
+
+    return token;
 }
