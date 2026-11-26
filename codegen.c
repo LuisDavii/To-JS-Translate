@@ -13,7 +13,7 @@ typedef struct {
 
 static int is_js_reserved(const char *name) {
     static const char *const keywords[] = {
-        "await", "break", "case", "catch", "class", "const", "continue",
+        "await", "break", "case", "catch", "class", "console", "const", "continue",
         "debugger", "default", "delete", "do", "else", "enum", "export",
         "extends", "false", "finally", "for", "function", "if", "implements",
         "import", "in", "instanceof", "interface", "let", "new", "null",
@@ -112,6 +112,12 @@ static const char *map_binary_op(const char *op) {
     if (strcmp(op, "or") == 0) {
         return "||";
     }
+    if (strcmp(op, "==") == 0) {
+        return "===";
+    }
+    if (strcmp(op, "!=") == 0) {
+        return "!==";
+    }
     return op;
 }
 
@@ -160,7 +166,15 @@ static void emit_expr(CodeGen *cg, const Node *node, int parent_prec,
             break;
         }
 
-        case N_REAL:
+        case N_REAL: {
+            const char *s = node->text ? node->text : "0.0";
+            while (s[0] == '0' && s[1] != '.' && s[1] != '\0') {
+                s++;
+            }
+            fputs(s, cg->out);
+            break;
+        }
+
         case N_STRING:
         case N_BOOL:
         case N_NONE:
