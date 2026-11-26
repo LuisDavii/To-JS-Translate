@@ -1,27 +1,45 @@
 # To JS Translate (PtoJS)
 
-Tradutor de uma linguagem estilo Python (`.tojs`) para JavaScript, escrito em C com Flex e Bison.
+Tradutor da linguagem **PtoJS** (`.tojs`, sintaxe inspirada em Python com blocos por indentacao) para **JavaScript (ES6+)**, desenvolvido em **C** com **Flex** e **Bison** para a disciplina de Compiladores.
+
+- **Modalidade:** Tradutor (`.tojs` -> `.js` executavel em Node.js)
+- **Equipe:** Claybson Jordao, Luis Davi e Sabrina Gabrielly
+- **Documentacao completa:**
+  - [Especificacao da Linguagem e Gramatica Formal](docs/ESPECIFICACAO.md) (tokens, BNF, precedencia, variaveis, regras semanticas e exemplos)
+  - [Documentacao Tecnica da Arquitetura](docs/ARQUITETURA.md) (pipeline, modulos, AST, tabela de simbolos, geracao de codigo e decisoes de projeto)
 
 ## Pipeline
 
-```
+```text
 arquivo.tojs -> lexer.l (analise lexica) -> parser.y (analise sintatica + AST)
              -> semantic.c (tipos e tabela de simbolos) -> codegen.c -> saida.js
 ```
 
-## Como compilar e usar
+## Requisitos e Compilacao
+
+### Dependencias
+- `gcc` (C99/C11)
+- `flex` (analisador lexico)
+- `bison` (analisador sintatico)
+- `make` e `bash`
+- `node` (Node.js, para executar o JavaScript gerado e validar os testes)
+
+### Compilacao e Execucao (Linux / macOS / WSL / MSYS2)
 
 ```bash
-make                                   # gera o executavel ./tojs
-./tojs exemplos/01_basico.tojs saida.js   # traduz
-node saida.js                          # executa o JS gerado
+make                                      # gera parser.tab.c, lex.yy.c e o executavel ./tojs
+./tojs exemplos/01_basico.tojs saida.js   # traduz para JavaScript
+node saida.js                             # executa o JS gerado
 
-./tojs --ast arquivo.tojs              # imprime a AST e traduz
-./tojs --ast-only arquivo.tojs         # so imprime a AST
-./tojs --symbols arquivo.tojs          # imprime a tabela de simbolos
+./tojs --ast arquivo.tojs                 # imprime a AST e traduz
+./tojs --ast-only arquivo.tojs            # apenas analisa e imprime a AST
+./tojs --symbols arquivo.tojs             # imprime a tabela de simbolos e traduz
+make clean                                # remove artefatos gerados
 ```
 
-## A linguagem em resumo
+> **Windows (MSYS2 UCRT64):** garanta que `gcc`, `flex`, `bison`, `make` e `node` estejam no `PATH` e execute os comandos acima no terminal MSYS2 UCRT64.
+
+## A Linguagem em Resumo
 
 | Recurso | Exemplo |
 |---|---|
@@ -35,9 +53,9 @@ node saida.js                          # executa o JS gerado
 | Repeticao | `while cond:` + bloco indentado |
 | Comentario | `# ate o fim da linha` |
 
-Blocos sao delimitados por indentacao (como em Python). Nao ha `elif`, funcoes nem listas.
+Blocos sao delimitados por indentacao (como em Python). Consulte [docs/ESPECIFICACAO.md](docs/ESPECIFICACAO.md) para a especificacao completa de tokens, gramatica BNF, precedencia e regras semanticas.
 
-## Exemplos de execucao
+## Exemplos de Execucao
 
 Ficam em `exemplos/`. Cada arquivo traz, nos comentarios `# SAIDA:`, a saida esperada.
 
@@ -51,7 +69,7 @@ Ficam em `exemplos/`. Cada arquivo traz, nos comentarios `# SAIDA:`, a saida esp
 | `06_aninhado.tojs` | `if` dentro de `while` |
 | `07_strings.tojs` | aspas simples/duplas e concatenacao |
 
-Exemplo (`04_repeticao.tojs`):
+Exemplo (`exemplos/04_repeticao.tojs`):
 
 ```python
 i = 1;
@@ -76,27 +94,48 @@ while (i <= 10) {
 console.log(soma);
 ```
 
-## Testes
+## Testes Automatizados
 
 ```bash
-make test          # ou: ./run_tests.sh
+make test          # ou: bash run_tests.sh ./tojs
 ```
 
-O script traduz e executa (com Node) cada caso e compara com o resultado esperado.
+O script `run_tests.sh` executa **50 casos de teste** (7 exemplos + 13 casos validos + 30 casos invalidos), traduzindo e executando o JS gerado com Node.js:
 
-**Validos** (`exemplos/` e `tests/validos/`): a saida do JS gerado deve ser igual as linhas `# SAIDA:` do arquivo (ou ao `.saida` ao lado). Cobrem comentarios, linhas vazias, unarios, `while` aninhado, identificadores reservados em JS (`var`, `new`, `class`), zeros a esquerda, programa vazio, arquivo sem newline final, indentacao com tab e precedencia logica.
-
-**Invalidos** (`tests/invalidos/`): o tradutor deve falhar, nao gerar o `.js` e imprimir a mensagem indicada em `# ESPERA:`.
+- **Validos** (`exemplos/` e `tests/validos/`): a saida do JS gerado deve ser exatamente igual as linhas `# SAIDA:` (ou ao `.saida` ao lado). Cobrem comentarios, linhas vazias, unarios, `while` aninhado, identificadores reservados em JS (`var`, `new`, `class`, `console`), zeros a esquerda em inteiros e reais, programa vazio, arquivo sem newline final, indentacao com tab, precedencia logica e variaveis declaradas apenas em blocos condicionais.
+- **Invalidos** (`tests/invalidos/`): o tradutor deve retornar erro, nao gerar o arquivo `.js` e imprimir a mensagem indicada em `# ESPERA:`.
 
 | Prefixo | Fase | Casos |
 |---|---|---|
 | `l` | lexica | caractere invalido (`@`, `$`, `!`), string nao fechada, indentacao inconsistente |
 | `s` | sintatica | falta de `;`, falta de `:`, `print` sem parenteses, parentese aberto, `else` sem `if`, atribuicao sem valor, bloco sem indentacao, operador duplicado, comparacao encadeada, `x = y = 3`, palavra reservada como variavel |
-| `m` | semantica | variavel nao definida, `"a" + 1`, `"a" - 1`, condicao nao logica (`if`/`while`), `not 3`, `1 < "a"`, `1 == "a"`, `1 and 2`, `-"a"`, `True + 1` |
+| `m` | semantica | variavel nao definida, uso antes da atribuicao, `"a" + 1`, `"a" - 1`, condicao nao logica (`if`/`while`), `not 3`, `1 < "a"`, `1 == "a"`, `1 and 2`, divisao/modulo por zero, `-"a"`, `True + 1` |
 
-## Decisoes e limitacoes conhecidas
+## Estrutura do Repositorio
+
+```text
+.
+├── lexer.l              # Especificacao lexica (Flex)
+├── parser.y             # Especificacao sintatica e construcao da AST (Bison)
+├── ast.h / ast.c        # Arvore Sintatica Abstrata (AST)
+├── semantic.h / .c      # Tabela de simbolos e analise semantica
+├── codegen.h / .c       # Gerador de codigo JavaScript
+├── main.c               # Driver CLI (--ast, --ast-only, --symbols)
+├── Makefile             # Build e execucao de testes
+├── run_tests.sh         # Suíte de testes automatizados
+├── docs/
+│   ├── ESPECIFICACAO.md # Especificacao formal da linguagem e gramatica BNF
+│   └── ARQUITETURA.md   # Arquitetura tecnica e decisoes de implementacao
+├── exemplos/            # 7 programas de demonstracao
+└── tests/
+    ├── validos/         # 13 casos de borda validos
+    └── invalidos/       # 30 casos invalidos (lexicos, sintaticos e semanticos)
+```
+
+## Decisoes e Limitacoes Conhecidas
 
 - **Escopo unico** (como Python): variavel atribuida so em um ramo do `if` continua valida depois dele. O gerador declara `let x;` no topo do JS nesses casos (testes `v11` e `v12`).
-- O tradutor para no **primeiro erro lexico ou sintatico**; erros semanticos sao acumulados e contados.
+- O tradutor para no **primeiro erro lexico ou sintatico**; erros semanticos sao acumulados e contados antes de cancelar a traducao.
+- Comparacoes `==` e `!=` sao traduzidas para `===` e `!==` em JavaScript para evitar coercao implicita de tipos.
 - Reais sao impressos pelo JS sem `.0` (`3.0` aparece como `3`).
-- Identificadores que sao palavras reservadas do JS recebem o prefixo `_tojs_`.
+- Identificadores que colidem com palavras reservadas do JS (ou `console`) recebem o prefixo `_tojs_`.
