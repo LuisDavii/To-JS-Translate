@@ -295,6 +295,15 @@ static ValueType check_expr(SymbolTable *table, const Node *node) {
                     table->errors++;
                     return VAL_ERROR;
                 }
+                if ((strcmp(op, "/") == 0 || strcmp(op, "%") == 0) && node->right &&
+                    ((node->right->type == N_INT && node->right->int_value == 0) ||
+                     (node->right->type == N_REAL && node->right->number == 0.0))) {
+                    fprintf(stderr,
+                            "Erro semantico na linha %d: %s por zero.\n",
+                            node->line, strcmp(op, "/") == 0 ? "divisao" : "modulo");
+                    table->errors++;
+                    return VAL_ERROR;
+                }
                 if (strcmp(op, "/") == 0) {
                     return VAL_REAL;
                 }
