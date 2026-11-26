@@ -1,0 +1,9 @@
+# Reais com zeros a esquerda e variavel chamada console (nao deve colidir com console.log)
+console = 00.5;
+y = 07.25;
+print(console);
+print(y);
+print(console == 0.5);
+# SAIDA: 0.5
+# SAIDA: 7.25
+# SAIDA: true
