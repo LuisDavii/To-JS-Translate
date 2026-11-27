@@ -102,6 +102,7 @@ O gerador percorre diretamente a AST (`program_root`) e consulta a `SymbolTable`
 4. **Mapeamento semantico fiel:**
    - `and` -> `&&`, `or` -> `||`, `not` -> `!`
    - `==` -> `===`, `!=` -> `!==` (igualdade estrita, evitando coercao implicita do JS)
+   - `a % b` -> `((a % b) + b) % b` (o resto segue o sinal do divisor, como no Python; em JS puro `-7 % 3` daria `-1`)
    - `True` -> `true`, `False` -> `false`, `None` -> `null`
    - `print(expr);` -> `console.log(expr);`
    - Zeros a esquerda em literais inteiros (`007` -> `7`) e reais (`00.5` -> `0.5`) sao normalizados para evitar erros de sintaxe/octal no JS.

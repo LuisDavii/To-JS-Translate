@@ -1,0 +1,17 @@
+# modulo segue o sinal do divisor, como no Python
+a = -7;
+b = 3;
+print(-7 % 3);
+print(7 % -3);
+print(-7 % -3);
+print(7 % 3);
+print(a % b);
+print(a % (b + 1) + 10);
+print(-5.5 % 2);
+# SAIDA: 2
+# SAIDA: -2
+# SAIDA: -1
+# SAIDA: 1
+# SAIDA: 2
+# SAIDA: 11
+# SAIDA: 0.5

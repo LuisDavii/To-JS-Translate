@@ -9,34 +9,52 @@ extern int yylineno;
 Node *program_root = NULL;
 %}
 
+/* Incluido tambem no parser.tab.h, para que o tipo Node exista onde o %union for usado (ex.: no lexer). */
 %code requires {
 #include "ast.h"
 }
 
+/* Habilita rastreio de posicao: @1, @2... fornecem a linha de cada simbolo (usado nos erros). */
 %locations
+/* Mensagens de erro sintatico detalhadas ("unexpected X, expecting Y"). */
 %define parse.error verbose
 
+/*
+ * Tipo do valor semantico de cada simbolo:
+ *   text -> string (lexemas de identificador, numero e string, vindos do lexer)
+ *   node -> ponteiro para no da AST (nao-terminais da gramatica)
+ */
 %union {
     char *text;
     Node *node;
 }
 
+/* Em caso de erro sintatico, o Bison libera os valores que ficaram na pilha (evita vazamento de memoria). */
 %destructor { free($$); } <text>
 %destructor { ast_free($$); } <node>
 
+/* Tokens que carregam texto (lexema). Os demais tokens abaixo nao carregam valor. */
 %token <text> IDENT STRING
 %token <text> INTEGER REAL
 
+/* Palavras-chave e literais (True, False, None; if, else, while, print; and, or, not). */
 %token TRUE FALSE NONE
 %token IF ELSE WHILE PRINT
 %token AND OR NOT
 
+/* Operadores de comparacao, atribuicao (=) e aritmeticos. */
 %token EQ NE GE LE GT LT ASSIGN
 %token PLUS MINUS STAR SLASH MOD
 
+/* Pontuacao. FIM_COMANDO e o `;`. (COMMA esta declarado mas ainda nao e usado na gramatica.) */
 %token LPAREN RPAREN COLON COMMA FIM_COMANDO
+/*
+ * Tokens "virtuais" gerados pelo lexer (nao existem como texto): fim de linha e abertura/fechamento
+ * de bloco por indentacao. Equivalem as chaves { } de outras linguagens.
+ */
 %token NEWLINE INDENT DEDENT
 
+/* Declara que estes nao-terminais produzem `Node *` (campo `node` do %union). */
 %type <node> programa comandos comando
 %type <node> comando_simples comando_composto
 %type <node> atribuicao saida condicional repeticao
@@ -44,21 +62,35 @@ Node *program_root = NULL;
 %type <node> expressao_not comparacao
 %type <node> expressao_aritmetica termo fator primario
 
+/*
+ * Precedencia e associatividade, da MENOR (topo) para a MAIOR (final):
+ *   or < and < not < comparacoes < + - < * / % < unarios.
+ * `%left` = associa a esquerda; `%right` = a direita; `%nonassoc` = nao encadeia.
+ * A hierarquia de nao-terminais da gramatica (expressao_or -> expressao_and -> ...)
+ * ja impoe essa ordem; as declaracoes reforcam e documentam as regras.
+ */
 %left OR
 %left AND
 %right NOT
 
+/* Comparacoes nao encadeiam: `1 < 2 < 3` e erro sintatico (diferente do Python). */
 %nonassoc EQ NE GT LT GE LE
 
 %left PLUS MINUS
 %left STAR SLASH MOD
 
+/* Tokens fantasmas, usados so com %prec para dar precedencia aos unarios +x e -x. */
 %right UPLUS UMINUS
 
+/* Simbolo inicial da gramatica. */
 %start programa
 
 %%
 
+/*
+ * Regra inicial: um programa e uma lista de comandos. Embrulha a lista no no raiz (N_LIST)
+ * e guarda em `program_root`, que o main.c usa depois.
+ */
 programa:
     comandos
     {
@@ -67,6 +99,10 @@ programa:
     }
     ;
 
+/*
+ * Lista de comandos, recursiva a ESQUERDA (eficiente no LALR):
+ * vazio, ou (lista ja pronta + mais um comando). node_append encadeia via `next`.
+ */
 comandos:
       /* vazio */
       {
@@ -79,6 +115,12 @@ comandos:
       }
     ;
 
+/*
+ * Um comando pode ser:
+ *   - simples (atribuicao ou print), obrigatoriamente terminado em `;` + fim de linha
+ *   - composto (if/while), cujo fim e dado pelo DEDENT do bloco
+ *   - linha em branco (so NEWLINE) -> NULL, ignorada pela AST
+ */
 comando:
       comando_simples FIM_COMANDO NEWLINE
       {
@@ -96,6 +138,7 @@ comando:
       }
     ;
 
+/* Comandos de uma linha. */
 comando_simples:
       atribuicao
       {
@@ -108,6 +151,7 @@ comando_simples:
       }
     ;
 
+/* Comandos com bloco indentado. */
 comando_composto:
       condicional
       {
@@ -122,6 +166,10 @@ comando_composto:
 
 /* Atribuicao */
 
+/*
+ * `x = expr`. Cria N_ASSIGN com o nome em `text` e a expressao em `left`.
+ * free($1) libera o texto do lexer, ja que node_text faz sua propria copia.
+ */
 atribuicao:
     IDENT ASSIGN expressao
     {
@@ -133,6 +181,7 @@ atribuicao:
 
 /* Saida */
 
+/* `print(expr)` -> N_PRINT. Os parenteses sao obrigatorios (parte da gramatica). */
 saida:
     PRINT LPAREN expressao RPAREN
     {
@@ -143,6 +192,11 @@ saida:
 
 /* Estrutura condicional */
 
+/*
+ * `if cond:` + NEWLINE + bloco indentado (INDENT ... DEDENT), com `else:` opcional.
+ * Numeracao dos simbolos na acao: $2 = condicao, $6 = comandos do then; na 2a forma,
+ * $12 = comandos do else.
+ */
 condicional:
       IF expressao COLON NEWLINE
       INDENT comandos DEDENT
@@ -167,6 +221,7 @@ condicional:
 
 /* Estrutura de repeticao */
 
+/* `while cond:` + bloco indentado. $2 = condicao, $6 = corpo. */
 repeticao:
     WHILE expressao COLON NEWLINE
     INDENT comandos DEDENT
@@ -179,6 +234,11 @@ repeticao:
 
 /* Expressoes */
 
+/*
+ * Cadeia de nao-terminais, do mais fraco (or) ao mais forte (primario).
+ * Quanto mais fundo na cadeia, MAIOR a precedencia:
+ *   expressao -> or -> and -> not -> comparacao -> aritmetica (+ -) -> termo (* / %) -> fator (unario) -> primario
+ */
 expressao:
     expressao_or
     {
@@ -186,6 +246,7 @@ expressao:
     }
     ;
 
+/* `a or b` (associa a esquerda). Cria N_BINARY com operador "or". */
 expressao_or:
       expressao_or OR expressao_and
       {
@@ -198,6 +259,7 @@ expressao_or:
       }
     ;
 
+/* `a and b` (associa a esquerda). */
 expressao_and:
       expressao_and AND expressao_not
       {
@@ -210,6 +272,7 @@ expressao_and:
       }
     ;
 
+/* `not x` (recursivo, associa a direita) ou desce para comparacao. */
 expressao_not:
       NOT expressao_not
       {
@@ -222,6 +285,10 @@ expressao_not:
       }
     ;
 
+/*
+ * No maximo UMA comparacao por vez (ha so um operador entre duas expressoes aritmeticas),
+ * por isso `1 < 2 < 3` nao e aceito.
+ */
 comparacao:
       expressao_aritmetica
       {
@@ -261,6 +328,7 @@ comparacao:
 
 /* Operacoes aritmeticas */
 
+/* Soma e subtracao (menor precedencia aritmetica), associativas a esquerda. */
 expressao_aritmetica:
       expressao_aritmetica PLUS termo
       {
@@ -278,6 +346,7 @@ expressao_aritmetica:
       }
     ;
 
+/* Multiplicacao, divisao e modulo; ligam mais forte que + e -. */
 termo:
       termo STAR fator
       {
@@ -300,6 +369,7 @@ termo:
       }
     ;
 
+/* Sinal unario (+x, -x); %prec define a precedencia da regra. Sem sinal, desce para primario. */
 fator:
       PLUS fator %prec UPLUS
       {
@@ -319,6 +389,10 @@ fator:
 
 /* Valores primarios */
 
+/*
+ * Elementos indivisiveis: variavel, literais, ou expressao entre parenteses.
+ * Os parenteses NAO viram no da AST (a estrutura da arvore ja carrega a ordem).
+ */
 primario:
       IDENT
       {
@@ -367,6 +441,7 @@ primario:
 
 %%
 
+/* Chamada pelo Bison em erro sintatico: imprime a linha e a mensagem detalhada no stderr. */
 void yyerror(const char *message) {
     int line = yylloc.first_line > 0 ? yylloc.first_line : yylineno;
     fprintf(stderr, "Erro sintatico na linha %d: %s\n", line, message);

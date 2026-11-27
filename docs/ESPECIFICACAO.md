@@ -43,7 +43,7 @@ O analisador lexico e especificado em [`lexer.l`](../lexer.l) (Flex).
 | `-` | `MINUS` | Subtracao / negativo unario |
 | `*` | `STAR` | Multiplicacao |
 | `/` | `SLASH` | Divisao |
-| `%` | `MOD` | Modulo (resto) |
+| `%` | `MOD` | Modulo (resto, com o sinal do divisor, como no Python: `-7 % 3` = `2`) |
 | `(` | `LPAREN` | Abertura de parenteses |
 | `)` | `RPAREN` | Fechamento de parenteses |
 | `:` | `COLON` | Inicio de bloco composto |
@@ -212,7 +212,7 @@ O analisador semantico ([`semantic.c`](../semantic.c)) percorre a AST e infere/v
 1. **Variavel nao definida:** Uso de identificador nao presente/inativo na tabela de simbolos.
 2. **Condicoes estritamente logicas:** As expressoes de condicao de `if` e `while` devem resultar em tipo `logico` (ou `dinamico`). Exemplos invalidos: `if 1:`, `while "abc":`.
 3. **Incompatibilidade de tipos em expressoes:** Rejeita operacoes como `"a" + 1`, `"a" - 1`, `True + 1`, `-"abc"`, `not 3`, `1 < "a"`, `1 == "a"`, `1 and 2`.
-4. **Divisao e modulo por zero literal:** Rejeita `expr / 0`, `expr / 0.0`, `expr % 0` e `expr % 0.0` em tempo de analise semantica.
+4. **Divisao e modulo por zero literal:** Rejeita `expr / 0`, `expr / 0.0`, `expr % 0` e `expr % 0.0` em tempo de analise semantica, inclusive com sinal (`expr / -0`, `expr % +0.0`).
 5. **Revalidacao de condicao de `while`:** Apos analisar o corpo do `while`, a condicao e verificada novamente para capturar casos em que o corpo altera o tipo de uma variavel usada na condicao.
 6. **Acumulo de erros semanticos:** Diferentemente dos erros lexicos/sintaticos (que interrompem imediatamente), a analise semantica percorre toda a AST, relata todos os erros encontrados com numero de linha e cancela a geracao do `.js` se houver ao menos um erro.
 

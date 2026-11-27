@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Copia uma string para o heap (equivalente a strdup). Aceita NULL, tratando como string vazia. */
 static char *ast_duplicate(const char *text) {
     const char *src = text ? text : "";
     size_t len = strlen(src) + 1;
@@ -16,6 +17,7 @@ static char *ast_duplicate(const char *text) {
     return copy;
 }
 
+/* Concatena dois textos em uma string nova. Usada para montar o prefixo de indentacao `|   ` ao imprimir a arvore. */
 static char *join_prefix(const char *prefix, const char *segment) {
     size_t p_len = strlen(prefix);
     size_t s_len = strlen(segment);
@@ -31,6 +33,7 @@ static char *join_prefix(const char *prefix, const char *segment) {
     return joined;
 }
 
+/* Cria um no zerado (calloc: todos os ponteiros ficam NULL) com o tipo e a linha informados. */
 Node *node_new(NodeType type, int line) {
     Node *node = calloc(1, sizeof(Node));
 
@@ -44,6 +47,7 @@ Node *node_new(NodeType type, int line) {
     return node;
 }
 
+/* Cria o no raiz do programa (N_LIST); `items` e o primeiro comando da lista encadeada. */
 Node *node_list(Node *items, int line) {
     int start_line = items ? items->line : line;
     Node *node = node_new(N_LIST, start_line > 0 ? start_line : 1);
@@ -51,12 +55,18 @@ Node *node_list(Node *items, int line) {
     return node;
 }
 
+/* Cria um no que carrega texto (nome de variavel, literal string, operador). O texto e COPIADO. */
 Node *node_text(NodeType type, const char *text, int line) {
     Node *node = node_new(type, line);
     node->text = ast_duplicate(text);
     return node;
 }
 
+/*
+ * Cria N_INT ou N_REAL guardando o literal original em `text` e o valor
+ * convertido em `int_value` (strtoll) ou `number` (strtod). Manter o texto original
+ * permite ao codegen reescrever o literal.
+ */
 Node *node_number(NodeType type, double value, const char *text, int line) {
     Node *node = node_text(type, text, line);
     node->number = value;
@@ -69,12 +79,14 @@ Node *node_number(NodeType type, double value, const char *text, int line) {
     return node;
 }
 
+/* Cria N_BOOL; o texto ja fica no formato JavaScript ("true"/"false"). */
 Node *node_bool(int value, int line) {
     Node *node = node_text(N_BOOL, value ? "true" : "false", line);
     node->boolean = value ? 1 : 0;
     return node;
 }
 
+/* Operacao binaria: o operador vai em `text`; operandos em `left` e `right`. */
 Node *node_binary(const char *op, Node *left, Node *right, int line) {
     Node *node = node_text(N_BINARY, op, line);
     node->left = left;
@@ -82,12 +94,17 @@ Node *node_binary(const char *op, Node *left, Node *right, int line) {
     return node;
 }
 
+/* Operacao unaria: o operador vai em `text`; o unico operando fica em `left`. */
 Node *node_unary(const char *op, Node *operand, int line) {
     Node *node = node_text(N_UNARY, op, line);
     node->left = operand;
     return node;
 }
 
+/*
+ * Anexa `item` ao fim da lista. Se `item` e NULL (linha em branco), devolve a lista como esta;
+ * se a lista e NULL (primeiro comando), o proprio item vira a lista.
+ */
 Node *node_append(Node *list, Node *item) {
     if (!item) {
         return list;
@@ -104,6 +121,7 @@ Node *node_append(Node *list, Node *item) {
     return list;
 }
 
+/* Nome legivel do tipo de no (usado na depuracao). */
 const char *node_type_name(NodeType type) {
     switch (type) {
         case N_LIST:   return "Program";
@@ -123,6 +141,7 @@ const char *node_type_name(NodeType type) {
     }
 }
 
+/* Conta todos os nos da arvore, recursivamente (filhos + irmaos via `next`). */
 int ast_count_nodes(const Node *node) {
     int count = 0;
     while (node) {
@@ -136,8 +155,10 @@ int ast_count_nodes(const Node *node) {
     return count;
 }
 
+/* Declaracao antecipada: ast_print_list e ast_print_node chamam uma a outra (recursao mutua). */
 static void ast_print_node(const Node *node, FILE *out, const char *prefix, int is_last);
 
+/* Imprime uma lista de comandos (um bloco). Marca o ultimo elemento para desenhar o conector certo. */
 static void ast_print_list(const Node *head, FILE *out, const char *prefix) {
     if (!head) {
         fprintf(out, "%s`-- (vazio)\n", prefix);
@@ -151,6 +172,10 @@ static void ast_print_list(const Node *head, FILE *out, const char *prefix) {
     }
 }
 
+/*
+ * Imprime um no no formato de arvore ASCII (|-- e `--), indentando os filhos
+ * com `prefix`. Cada tipo de no mostra seus filhos de um jeito (condicao/then/else no If, etc.).
+ */
 static void ast_print_node(const Node *node, FILE *out, const char *prefix, int is_last) {
     if (!node) {
         return;
@@ -266,6 +291,7 @@ static void ast_print_node(const Node *node, FILE *out, const char *prefix, int 
     free(child_prefix);
 }
 
+/* Ponto de entrada da impressao da AST (flags --ast e --ast-only). */
 void ast_print(const Node *node, FILE *out) {
     if (!out) {
         out = stdout;
@@ -286,6 +312,10 @@ void ast_print(const Node *node, FILE *out) {
     }
 }
 
+/*
+ * Libera a arvore inteira. Percorre a lista via `next` (iterativo) e os filhos
+ * via recursao; libera o texto de cada no antes do proprio no.
+ */
 void ast_free(Node *node) {
     while (node) {
         Node *next = node->next;

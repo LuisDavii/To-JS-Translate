@@ -5,15 +5,28 @@
 #include "semantic.h"
 #include "codegen.h"
 
+/*
+ * Simbolos definidos pelo codigo gerado pelo Bison/Flex:
+ * yyparse = ponto de entrada do analisador sintatico; yyin = arquivo lido pelo lexer.
+ */
 extern int yyparse(void);
 extern FILE *yyin;
 
+/* Mensagem de ajuda exibida em caso de erro de argumentos ou com -h/--help. */
 static void print_usage(const char *prog) {
     fprintf(stderr,
             "Uso: %s [--ast | --ast-only] [--symbols] arquivo.tojs [saida.js]\n",
             prog);
 }
 
+/*
+ * Orquestra as 4 fases do tradutor:
+ *   1) lexica + sintatica (yyparse)  -> constroi a AST
+ *   2) (opcional) imprime a AST      -> --ast / --ast-only
+ *   3) analise semantica             -> tabela de simbolos + checagem de tipos
+ *   4) geracao de codigo             -> escreve o .js
+ * Se qualquer fase falhar, nenhum .js e gerado.
+ */
 int main(int argc, char **argv) {
     int show_ast = 0;
     int ast_only = 0;
@@ -22,6 +35,11 @@ int main(int argc, char **argv) {
     const char *output_path = "saida.js";
     int pos = 0;
 
+    /*
+     * Leitura dos argumentos: as flags (--ast, --ast-only, --symbols) ligam opcoes;
+     * o 1o argumento sem "-" e o arquivo de entrada e o 2o e o arquivo de saida
+     * (padrao: saida.js).
+     */
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--ast") == 0) {
             show_ast = 1;
@@ -54,12 +72,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    /* Abre o .tojs e aponta o lexer para ele (yyin e o arquivo que o Flex le). */
     yyin = fopen(input_path, "r");
     if (!yyin) {
         perror("Erro ao abrir arquivo de entrada");
         return 1;
     }
 
+    /* Fases lexica + sintatica. Retorna 0 se o programa e sintaticamente valido; erros lexicos encerram direto dentro do lexer. */
     int parse_result = yyparse();
     fclose(yyin);
 
@@ -72,11 +92,13 @@ int main(int argc, char **argv) {
         ast_print(program_root, stdout);
     }
 
+    /* Modo --ast-only: so analisa e imprime a AST, sem semantica nem geracao de codigo. */
     if (ast_only) {
         ast_free(program_root);
         return 0;
     }
 
+    /* Fase semantica: preenche `symtab` e devolve o numero de erros encontrados (acumula todos antes de parar). */
     SymbolTable symtab;
     int sem_errors = semantic_analyze(program_root, &symtab);
 
@@ -84,6 +106,7 @@ int main(int argc, char **argv) {
         semantic_print_symbols(&symtab, stdout);
     }
 
+    /* So gera o JavaScript se NAO houve erro semantico. Depois libera tabela e AST. */
     int exit_code = 0;
 
     if (sem_errors > 0) {

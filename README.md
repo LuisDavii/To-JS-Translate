@@ -100,16 +100,16 @@ console.log(soma);
 make test          # ou: bash run_tests.sh ./tojs
 ```
 
-O script `run_tests.sh` executa **50 casos de teste** (7 exemplos + 13 casos validos + 30 casos invalidos), traduzindo e executando o JS gerado com Node.js:
+O script `run_tests.sh` executa **53 casos de teste** (7 exemplos + 14 casos validos + 32 casos invalidos), traduzindo e executando o JS gerado com Node.js:
 
-- **Validos** (`exemplos/` e `tests/validos/`): a saida do JS gerado deve ser exatamente igual as linhas `# SAIDA:` (ou ao `.saida` ao lado). Cobrem comentarios, linhas vazias, unarios, `while` aninhado, identificadores reservados em JS (`var`, `new`, `class`, `console`), zeros a esquerda em inteiros e reais, programa vazio, arquivo sem newline final, indentacao com tab, precedencia logica e variaveis declaradas apenas em blocos condicionais.
+- **Validos** (`exemplos/` e `tests/validos/`): a saida do JS gerado deve ser exatamente igual as linhas `# SAIDA:` (ou ao `.saida` ao lado). Cobrem comentarios, linhas vazias, unarios, modulo com sinal como no Python, `while` aninhado, identificadores reservados em JS (`var`, `new`, `class`, `console`), zeros a esquerda em inteiros e reais, programa vazio, arquivo sem newline final, indentacao com tab, precedencia logica e variaveis declaradas apenas em blocos condicionais.
 - **Invalidos** (`tests/invalidos/`): o tradutor deve retornar erro, nao gerar o arquivo `.js` e imprimir a mensagem indicada em `# ESPERA:`.
 
 | Prefixo | Fase | Casos |
 |---|---|---|
 | `l` | lexica | caractere invalido (`@`, `$`, `!`), string nao fechada, indentacao inconsistente |
 | `s` | sintatica | falta de `;`, falta de `:`, `print` sem parenteses, parentese aberto, `else` sem `if`, atribuicao sem valor, bloco sem indentacao, operador duplicado, comparacao encadeada, `x = y = 3`, palavra reservada como variavel |
-| `m` | semantica | variavel nao definida, uso antes da atribuicao, `"a" + 1`, `"a" - 1`, condicao nao logica (`if`/`while`), `not 3`, `1 < "a"`, `1 == "a"`, `1 and 2`, divisao/modulo por zero, `-"a"`, `True + 1` |
+| `m` | semantica | variavel nao definida, uso antes da atribuicao, `"a" + 1`, `"a" - 1`, condicao nao logica (`if`/`while`), `not 3`, `1 < "a"`, `1 == "a"`, `1 and 2`, divisao/modulo por zero (inclusive `-0`, `+0.0`), `-"a"`, `True + 1` |
 
 ## Estrutura do Repositorio
 
@@ -128,8 +128,8 @@ O script `run_tests.sh` executa **50 casos de teste** (7 exemplos + 13 casos val
 │   └── ARQUITETURA.md   # Arquitetura tecnica e decisoes de implementacao
 ├── exemplos/            # 7 programas de demonstracao
 └── tests/
-    ├── validos/         # 13 casos de borda validos
-    └── invalidos/       # 30 casos invalidos (lexicos, sintaticos e semanticos)
+    ├── validos/         # 14 casos de borda validos
+    └── invalidos/       # 32 casos invalidos (lexicos, sintaticos e semanticos)
 ```
 
 ## Decisoes e Limitacoes Conhecidas
@@ -138,4 +138,5 @@ O script `run_tests.sh` executa **50 casos de teste** (7 exemplos + 13 casos val
 - O tradutor para no **primeiro erro lexico ou sintatico**; erros semanticos sao acumulados e contados antes de cancelar a traducao.
 - Comparacoes `==` e `!=` sao traduzidas para `===` e `!==` em JavaScript para evitar coercao implicita de tipos.
 - Reais sao impressos pelo JS sem `.0` (`3.0` aparece como `3`).
+- O modulo segue o sinal do divisor, como no Python: `a % b` e traduzido para `((a % b) + b) % b` (em JS puro, `-7 % 3` daria `-1`; no Python e no PtoJS da `2`).
 - Identificadores que colidem com palavras reservadas do JS (ou `console`) recebem o prefixo `_tojs_`.
